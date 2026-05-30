@@ -52,6 +52,7 @@ jobs:
 
       - name: Zip gerbers
         run: |
+          apt-get install -y -q zip
           cd gerbers
           zip -r ../lumberjack-pro-keyboard-gerbers-${{ github.sha }}.zip .
 
