@@ -1,0 +1,61 @@
+name: Generate Gerbers
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    paths:
+      - '**.kicad_pcb'
+
+jobs:
+  gerbers:
+    name: Generate Gerbers (main PCB)
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/inti-cmnb/kicad_auto:ki9
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Create output directory
+        run: mkdir -p gerbers
+
+      - name: Export gerber layers
+        run: |
+          kicad-cli pcb export gerbers \
+            --output gerbers/ \
+            lumberjack-pro-keyboard.kicad_pcb
+
+      - name: Export drill files
+        run: |
+          kicad-cli pcb export drill \
+            --output gerbers/ \
+            --format excellon \
+            --excellon-separate-th \
+            lumberjack-pro-keyboard.kicad_pcb
+
+      - name: Run DRC
+        continue-on-error: true
+        run: |
+          kicad-cli pcb drc \
+            --output gerbers/drc-report.json \
+            --format json \
+            --exit-code-violations \
+            lumberjack-pro-keyboard.kicad_pcb
+
+      - name: Zip gerbers
+        run: |
+          cd gerbers
+          zip -r ../lumberjack-pro-keyboard-gerbers-${{ github.sha }}.zip .
+
+      - name: Upload gerbers artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumberjack-pro-keyboard-gerbers-${{ github.sha }}
+          path: lumberjack-pro-keyboard-gerbers-${{ github.sha }}.zip
+          retention-days: 90
